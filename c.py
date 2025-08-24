@@ -384,7 +384,7 @@ def plot_cross_section_comparison(topas_df: pd.DataFrame, gate_df: pd.DataFrame,
     print(f"✅ Cross-section comparison plot saved to: {output_path}")
 
 
-def plot_crosssection_sum_comparison(topas_df, gate_df, thickness, output_dir):
+def plot_crosssection_sum_comparison(topas_df, gate_df, thickness, output_dir, plot_range_mm=150.0, bin_size_mm=1.0):
     if topas_df is None or gate_df is None or topas_df.empty or gate_df.empty:
         print(f"Skipping cross-section sum comparison for thickness {thickness} cm due to missing data.")
         return
@@ -395,23 +395,35 @@ def plot_crosssection_sum_comparison(topas_df, gate_df, thickness, output_dir):
         return
     for d in (topas_gamma, gate_gamma):
         if d is not None and not d.empty:
-            d['X_mm'] = d['X_cm'] * 10
-            d['Y_mm'] = d['Y_cm'] * 10
-    topas_x_sum = topas_gamma.groupby(topas_gamma['X_mm'].round().astype(int)).size() if not topas_gamma.empty else pd.Series(dtype=int)
-    gate_x_sum = gate_gamma.groupby(gate_gamma['X_mm'].round().astype(int)).size() if not gate_gamma.empty else pd.Series(dtype=int)
-    topas_y_sum = topas_gamma.groupby(topas_gamma['Y_mm'].round().astype(int)).size() if not topas_gamma.empty else pd.Series(dtype=int)
-    gate_y_sum = gate_gamma.groupby(gate_gamma['Y_mm'].round().astype(int)).size() if not gate_gamma.empty else pd.Series(dtype=int)
+            d['X_mm'] = d['X_cm'] * 10.0
+            d['Y_mm'] = d['Y_cm'] * 10.0
+    # Use aligned fixed bins so TOPAS and GATE are directly comparable
+    edges = np.arange(-plot_range_mm, plot_range_mm + bin_size_mm, bin_size_mm)
+    hist_range = [[-plot_range_mm, plot_range_mm], [-plot_range_mm, plot_range_mm]]
+    # 2D histogram per dataset
+    h_topas, _, _ = np.histogram2d(topas_gamma['X_mm'], topas_gamma['Y_mm'], bins=[edges, edges], range=hist_range) if not topas_gamma.empty else (np.zeros((len(edges)-1, len(edges)-1)), edges, edges)
+    h_gate,  _, _ = np.histogram2d(gate_gamma['X_mm'],  gate_gamma['Y_mm'],  bins=[edges, edges], range=hist_range) if not gate_gamma.empty else (np.zeros((len(edges)-1, len(edges)-1)), edges, edges)
+    # Sum over Y for each X bin (axis=1 because np.histogram2d returns shape (len(x_bins)-1, len(y_bins)-1))
+    topas_x_sum = h_topas.sum(axis=1)
+    gate_x_sum  = h_gate.sum(axis=1)
+    # Sum over X for each Y bin (axis=0)
+    topas_y_sum = h_topas.sum(axis=0)
+    gate_y_sum  = h_gate.sum(axis=0)
+    # Bin centers for plotting
+    centers = edges[:-1] + np.diff(edges) / 2.0
     fig, axs = plt.subplots(1, 2, figsize=(16, 6))
     fig.suptitle(f'Gamma Cross-Section Totals (Thickness: {thickness} cm)', fontsize=16, weight='bold')
-    axs[0].plot(topas_x_sum.index, topas_x_sum.values, 'o-', label='TOPAS (gamma)', alpha=0.8)
-    axs[0].plot(gate_x_sum.index, gate_x_sum.values, 's--', label='GATE (gamma)', alpha=0.8)
+    # X direction totals
+    axs[0].plot(centers, topas_x_sum, 'o-', label='TOPAS (gamma)', alpha=0.8)
+    axs[0].plot(centers, gate_x_sum,  's--', label='GATE (gamma)',  alpha=0.8)
     axs[0].set_xlabel('X Position (mm)')
     axs[0].set_ylabel('Total count over Y')
     axs[0].set_title('Total gamma count per X (sum over Y)')
     axs[0].legend()
     axs[0].grid(True, linestyle='--', alpha=0.6)
-    axs[1].plot(topas_y_sum.index, topas_y_sum.values, 'o-', label='TOPAS (gamma)', alpha=0.8)
-    axs[1].plot(gate_y_sum.index, gate_y_sum.values, 's--', label='GATE (gamma)', alpha=0.8)
+    # Y direction totals
+    axs[1].plot(centers, topas_y_sum, 'o-', label='TOPAS (gamma)', alpha=0.8)
+    axs[1].plot(centers, gate_y_sum,  's--', label='GATE (gamma)',  alpha=0.8)
     axs[1].set_xlabel('Y Position (mm)')
     axs[1].set_ylabel('Total count over X')
     axs[1].set_title('Total gamma count per Y (sum over X)')
