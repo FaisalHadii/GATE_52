@@ -366,7 +366,9 @@ def plot_cross_section_comparison(topas_df: pd.DataFrame, gate_df: pd.DataFrame,
         topas_df['Y_mm'] = topas_df['Y_cm'] * 10
         topas_cross_section = topas_df[(topas_df['Y_mm'] > -y_window_mm/2) & (topas_df['Y_mm'] < y_window_mm/2)]
         hist, _ = np.histogram(topas_cross_section['X_mm'], bins=x_bins)
-        plt.plot(x_bins[:-1] + np.diff(x_bins)/2, hist, 'o-', label='TOPAS (gamma)', alpha=0.7)
+        centers = x_bins[:-1] + np.diff(x_bins)/2
+        hist = np.where(hist > 0, hist, np.nan)
+        plt.plot(centers, hist, '-', linewidth=0.8, label='TOPAS (gamma)', alpha=0.95, color='tab:blue')
     else:
         print(f"No TOPAS data to plot for {thickness} cm.")
     if gate_df is not None and not gate_df.empty:
@@ -374,9 +376,12 @@ def plot_cross_section_comparison(topas_df: pd.DataFrame, gate_df: pd.DataFrame,
         gate_df['Y_mm'] = gate_df['Y_cm'] * 10
         gate_cross_section = gate_df[(gate_df['Y_mm'] > -y_window_mm/2) & (gate_df['Y_mm'] < y_window_mm/2)]
         hist, _ = np.histogram(gate_cross_section['X_mm'], bins=x_bins)
-        plt.plot(x_bins[:-1] + np.diff(x_bins)/2, hist, 's--', label='GATE (gamma)', alpha=0.7)
+        centers = x_bins[:-1] + np.diff(x_bins)/2
+        hist = np.where(hist > 0, hist, np.nan)
+        plt.plot(centers, hist, '-', linewidth=0.8, label='GATE (gamma)', alpha=0.95, color='tab:green')
     else:
         print(f"No GATE data to plot for {thickness} cm.")
+    plt.yscale('log')
     plt.legend()
     plt.tight_layout()
     plt.savefig(output_path, dpi=300)
@@ -414,19 +419,25 @@ def plot_crosssection_sum_comparison(topas_df, gate_df, thickness, output_dir, p
     fig, axs = plt.subplots(1, 2, figsize=(16, 6))
     fig.suptitle(f'Gamma Cross-Section Totals (Thickness: {thickness} cm)', fontsize=16, weight='bold')
     # X direction totals
-    axs[0].plot(centers, topas_x_sum, 'o-', label='TOPAS (gamma)', alpha=0.8)
-    axs[0].plot(centers, gate_x_sum,  's--', label='GATE (gamma)',  alpha=0.8)
+    x_top = np.where(topas_x_sum > 0, topas_x_sum, np.nan)
+    x_gate = np.where(gate_x_sum > 0,  gate_x_sum,  np.nan)
+    axs[0].plot(centers, x_top, '-', linewidth=0.8, label='TOPAS (gamma)', alpha=0.95, color='tab:blue')
+    axs[0].plot(centers, x_gate, '-', linewidth=0.8, label='GATE (gamma)',  alpha=0.95, color='tab:green')
     axs[0].set_xlabel('X Position (mm)')
     axs[0].set_ylabel('Total count over Y')
     axs[0].set_title('Total gamma count per X (sum over Y)')
+    axs[0].set_yscale('log')
     axs[0].legend()
     axs[0].grid(True, linestyle='--', alpha=0.6)
     # Y direction totals
-    axs[1].plot(centers, topas_y_sum, 'o-', label='TOPAS (gamma)', alpha=0.8)
-    axs[1].plot(centers, gate_y_sum,  's--', label='GATE (gamma)',  alpha=0.8)
+    y_top = np.where(topas_y_sum > 0, topas_y_sum, np.nan)
+    y_gate = np.where(gate_y_sum > 0,  gate_y_sum,  np.nan)
+    axs[1].plot(centers, y_top, '-', linewidth=0.8, label='TOPAS (gamma)', alpha=0.95, color='tab:blue')
+    axs[1].plot(centers, y_gate, '-', linewidth=0.8, label='GATE (gamma)',  alpha=0.95, color='tab:green')
     axs[1].set_xlabel('Y Position (mm)')
     axs[1].set_ylabel('Total count over X')
     axs[1].set_title('Total gamma count per Y (sum over X)')
+    axs[1].set_yscale('log')
     axs[1].legend()
     axs[1].grid(True, linestyle='--', alpha=0.6)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
