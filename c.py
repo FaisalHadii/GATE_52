@@ -368,7 +368,7 @@ def plot_cross_section_comparison(topas_df: pd.DataFrame, gate_df: pd.DataFrame,
         hist, _ = np.histogram(topas_cross_section['X_mm'], bins=x_bins)
         centers = x_bins[:-1] + np.diff(x_bins)/2
         hist = np.where(hist > 0, hist, np.nan)
-        plt.plot(centers, hist, '-', linewidth=0.8, label='TOPAS (gamma)', alpha=0.95, color='tab:blue')
+        plt.plot(centers, hist, '-', linewidth=0.8, label='TOPAS (gamma)', alpha=0.95, color='black')
     else:
         print(f"No TOPAS data to plot for {thickness} cm.")
     if gate_df is not None and not gate_df.empty:
@@ -378,7 +378,7 @@ def plot_cross_section_comparison(topas_df: pd.DataFrame, gate_df: pd.DataFrame,
         hist, _ = np.histogram(gate_cross_section['X_mm'], bins=x_bins)
         centers = x_bins[:-1] + np.diff(x_bins)/2
         hist = np.where(hist > 0, hist, np.nan)
-        plt.plot(centers, hist, '-', linewidth=0.8, label='GATE (gamma)', alpha=0.95, color='tab:green')
+        plt.plot(centers, hist, '-', linewidth=0.8, label='GATE (gamma)', alpha=0.95, color='magenta')
     else:
         print(f"No GATE data to plot for {thickness} cm.")
     plt.yscale('log')
@@ -421,8 +421,8 @@ def plot_crosssection_sum_comparison(topas_df, gate_df, thickness, output_dir, p
     # X direction totals
     x_top = np.where(topas_x_sum > 0, topas_x_sum, np.nan)
     x_gate = np.where(gate_x_sum > 0,  gate_x_sum,  np.nan)
-    axs[0].plot(centers, x_top, '-', linewidth=0.8, label='TOPAS (gamma)', alpha=0.95, color='tab:blue')
-    axs[0].plot(centers, x_gate, '-', linewidth=0.8, label='GATE (gamma)',  alpha=0.95, color='tab:green')
+    axs[0].plot(centers, x_top, '-', linewidth=0.8, label='TOPAS (gamma)', alpha=0.95, color='black')
+    axs[0].plot(centers, x_gate, '-', linewidth=0.8, label='GATE (gamma)',  alpha=0.95, color='magenta')
     axs[0].set_xlabel('X Position (mm)')
     axs[0].set_ylabel('Total count over Y')
     axs[0].set_title('Total gamma count per X (sum over Y)')
@@ -432,8 +432,8 @@ def plot_crosssection_sum_comparison(topas_df, gate_df, thickness, output_dir, p
     # Y direction totals
     y_top = np.where(topas_y_sum > 0, topas_y_sum, np.nan)
     y_gate = np.where(gate_y_sum > 0,  gate_y_sum,  np.nan)
-    axs[1].plot(centers, y_top, '-', linewidth=0.8, label='TOPAS (gamma)', alpha=0.95, color='tab:blue')
-    axs[1].plot(centers, y_gate, '-', linewidth=0.8, label='GATE (gamma)',  alpha=0.95, color='tab:green')
+    axs[1].plot(centers, y_top, '-', linewidth=0.8, label='TOPAS (gamma)', alpha=0.95, color='black')
+    axs[1].plot(centers, y_gate, '-', linewidth=0.8, label='GATE (gamma)',  alpha=0.95, color='magenta')
     axs[1].set_xlabel('Y Position (mm)')
     axs[1].set_ylabel('Total count over X')
     axs[1].set_title('Total gamma count per Y (sum over X)')
