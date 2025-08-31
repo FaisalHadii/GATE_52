@@ -88,7 +88,8 @@ def run_topas_simulation_vacuum(
 
     # Source position distribution: Flat rectangle with specified half sizes (mm)
     content = _set_or_add_line(content, "s:So/XRaySource/BeamPositionDistribution", '"Flat"')
-    content = _set_or_add_line(content, "s:So/XRaySource/BeamPositionCutoffShape", '"Rectangle"')
+    # Use Square to avoid any version-specific fallback to circular
+    content = _set_or_add_line(content, "s:So/XRaySource/BeamPositionCutoffShape", '"Square"')
     content = _set_or_add_line(content, "d:So/XRaySource/BeamPositionCutoffX", f"{source_half_length_mm} mm")
     content = _set_or_add_line(content, "d:So/XRaySource/BeamPositionCutoffY", f"{source_half_length_mm} mm")
 
