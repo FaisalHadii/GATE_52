@@ -21,14 +21,25 @@ GATE_BASE_MACRO_FILE = "compined1.mac"
 
 
 def _re_sub_or_append(pattern: str, replacement: str, content: str) -> str:
-    """Replace first match; if none, append replacement as a new line."""
+    """
+    Replace first match using regex. If none, DO NOT append replacement blindly
+    (since replacement may contain backrefs). This helper is now used only where
+    replacement does not use backrefs or where a match is guaranteed.
+    """
     new_content, n = re.subn(pattern, replacement, content, flags=re.MULTILINE)
-    if n == 0 and replacement not in content:
-        if not content.endswith("\n"):
-            content += "\n"
-        content += replacement + "\n"
-        return content
     return new_content
+
+
+def _set_or_add_line(content: str, key: str, value: str) -> str:
+    """Set a 'key = value' line (anchored), or append it if not found."""
+    line = f"{key} = {value}"
+    pattern = rf"^{re.escape(key)}\s*=.*$"
+    if re.search(pattern, content, flags=re.MULTILINE):
+        return re.sub(pattern, line, content, flags=re.MULTILINE)
+    # Append safely
+    if not content.endswith("\n"):
+        content += "\n"
+    return content + line + "\n"
 
 
 def run_topas_simulation_vacuum(
@@ -61,63 +72,23 @@ def run_topas_simulation_vacuum(
     content = base_macro_path.read_text()
 
     # Phantom thickness (HLZ is half-length)
-    content = re.sub(
-        r"(d:Ge/Phantom/HLZ\s*=\s*)[\d.eE+\-]+\s*cm",
-        rf"\g<1>{phantom_half_thickness_cm} cm",
-        content,
-    )
+    content = _set_or_add_line(content, "d:Ge/Phantom/HLZ", f"{phantom_half_thickness_cm} cm")
 
     # Source position distribution: Flat rectangle with specified half sizes (mm)
-    content = _re_sub_or_append(
-        r"(s:So/XRaySource/BeamPositionDistribution\s*=\s*).*",
-        r'\g<1>"Flat"',
-        content,
-    )
-    content = _re_sub_or_append(
-        r"(s:So/XRaySource/BeamPositionCutoffShape\s*=\s*).*",
-        r'\g<1>"Rectangle"',
-        content,
-    )
-    content = _re_sub_or_append(
-        r"(d:So/XRaySource/BeamPositionCutoffX\s*=\s*)[\d.eE+\-]+\s*mm",
-        f"\\g<1>{source_half_length_mm} mm",
-        content,
-    )
-    content = _re_sub_or_append(
-        r"(d:So/XRaySource/BeamPositionCutoffY\s*=\s*)[\d.eE+\-]+\s*mm",
-        f"\\g<1>{source_half_length_mm} mm",
-        content,
-    )
+    content = _set_or_add_line(content, "s:So/XRaySource/BeamPositionDistribution", '"Flat"')
+    content = _set_or_add_line(content, "s:So/XRaySource/BeamPositionCutoffShape", '"Rectangle"')
+    content = _set_or_add_line(content, "d:So/XRaySource/BeamPositionCutoffX", f"{source_half_length_mm} mm")
+    content = _set_or_add_line(content, "d:So/XRaySource/BeamPositionCutoffY", f"{source_half_length_mm} mm")
 
     # Force pencil beam (no divergence). Use a tiny non-zero cutoff to avoid TOPAS errors with 0.
     tiny_ang_rad = 1.0e-6
-    content = _re_sub_or_append(
-        r"(s:So/XRaySource/BeamAngularDistribution\s*=\s*).*",
-        r'\g<1>"Flat"',
-        content,
-    )
-    content = _re_sub_or_append(
-        r"(d:So/XRaySource/BeamAngularCutoffX\s*=\s*)[\d.eE+\-]+\s*rad",
-        f"\\g<1>{tiny_ang_rad} rad",
-        content,
-    )
-    content = _re_sub_or_append(
-        r"(d:So/XRaySource/BeamAngularCutoffY\s*=\s*)[\d.eE+\-]+\s*rad",
-        f"\\g<1>{tiny_ang_rad} rad",
-        content,
-    )
+    content = _set_or_add_line(content, "s:So/XRaySource/BeamAngularDistribution", '"Flat"')
+    content = _set_or_add_line(content, "d:So/XRaySource/BeamAngularCutoffX", f"{tiny_ang_rad} rad")
+    content = _set_or_add_line(content, "d:So/XRaySource/BeamAngularCutoffY", f"{tiny_ang_rad} rad")
 
     # Outputs
-    content = _re_sub_or_append(
-        r"(s:Sc/DoseInPhantom/OutputFile\s*=\s*).*",
-        rf'\g<1>"{output_dir}/phantom_dose"',
-        content,
-    )
-    content = _re_sub_or_append(
-        r"(s:Sc/PhaseSpace/OutputFile\s*=\s*).*",
-        rf'\g<1>"{output_dir}/MyTopasOutput"',
-        content,
-    )
+    content = _set_or_add_line(content, "s:Sc/DoseInPhantom/OutputFile", f'"{output_dir}/phantom_dose"')
+    content = _set_or_add_line(content, "s:Sc/PhaseSpace/OutputFile", f'"{output_dir}/MyTopasOutput"')
 
     temp_macro_path.write_text(content)
 
@@ -176,72 +147,28 @@ def run_gate_simulation_vacuum(
     content = base_macro_path.read_text()
 
     # Phantom thickness
-    content = re.sub(
-        r"(/gate/phantom/geometry/setZLength\s+)[\d.eE+\-]+(\s+cm)",
-        rf"\g<1>{thickness_cm}\g<2>",
-        content,
-    )
+    content = _set_or_add_line(content, "/gate/phantom/geometry/setZLength", f"{thickness_cm} cm")
 
     # Output path alias
-    content = _re_sub_or_append(
-        r"(/control/alias\s+GateOutputPath\s+).*",
-        rf"\g<1>{output_dir}/",
-        content,
-    )
+    content = _set_or_add_line(content, "/control/alias GateOutputPath", f"{output_dir}/")
 
     # Determine source name
     m = re.search(r"/gate/source/addSource\s+(\w+)", content)
     source_name = m.group(1) if m else "xray_source"
 
     # GPS position: Plane + Square, half-lengths in mm
-    content = _re_sub_or_append(
-        rf"(/gate/source/{source_name}/gps/pos/type\s+)\w+",
-        rf"\g<1>Plane",
-        content,
-    )
-    content = _re_sub_or_append(
-        rf"(/gate/source/{source_name}/gps/pos/shape\s+)\w+",
-        rf"\g<1>Square",
-        content,
-    )
-    content = _re_sub_or_append(
-        rf"(/gate/source/{source_name}/gps/pos/halfx\s+)[\d.eE+\-]+\s*mm",
-        rf"\g<1>{source_half_length_mm} mm",
-        content,
-    )
-    content = _re_sub_or_append(
-        rf"(/gate/source/{source_name}/gps/pos/halfy\s+)[\d.eE+\-]+\s*mm",
-        rf"\g<1>{source_half_length_mm} mm",
-        content,
-    )
+    content = _set_or_add_line(content, f"/gate/source/{source_name}/gps/pos/type", "Plane")
+    content = _set_or_add_line(content, f"/gate/source/{source_name}/gps/pos/shape", "Square")
+    content = _set_or_add_line(content, f"/gate/source/{source_name}/gps/pos/halfx", f"{source_half_length_mm} mm")
+    content = _set_or_add_line(content, f"/gate/source/{source_name}/gps/pos/halfy", f"{source_half_length_mm} mm")
 
     # GPS angular: pencil beam
-    content = _re_sub_or_append(
-        rf"(/gate/source/{source_name}/gps/ang/type\s+)\w+",
-        rf"\g<1>iso",
-        content,
-    )
-    content = _re_sub_or_append(
-        rf"(/gate/source/{source_name}/gps/mintheta\s+)[\d.eE+\-]+\s*\.\s*deg|(/gate/source/{source_name}/gps/mintheta\s+)[\d.eE+\-]+\s*deg",
-        rf"/gate/source/{source_name}/gps/mintheta 0. deg",
-        content,
-    )
-    content = _re_sub_or_append(
-        rf"(/gate/source/{source_name}/gps/maxtheta\s+)[\d.eE+\-]+\s*\.\s*deg|(/gate/source/{source_name}/gps/maxtheta\s+)[\d.eE+\-]+\s*deg",
-        rf"/gate/source/{source_name}/gps/maxtheta 0. deg",
-        content,
-    )
+    content = _set_or_add_line(content, f"/gate/source/{source_name}/gps/ang/type", "iso")
+    content = _set_or_add_line(content, f"/gate/source/{source_name}/gps/mintheta", "0. deg")
+    content = _set_or_add_line(content, f"/gate/source/{source_name}/gps/maxtheta", "0. deg")
     # Also set the newer 'ang/mintheta' and 'ang/maxtheta' to avoid deprecation warnings
-    content = _re_sub_or_append(
-        rf"(/gate/source/{source_name}/gps/ang/mintheta\s+)[\d.eE+\-]+\s*deg",
-        rf"\g<1>0. deg",
-        content,
-    )
-    content = _re_sub_or_append(
-        rf"(/gate/source/{source_name}/gps/ang/maxtheta\s+)[\d.eE+\-]+\s*deg",
-        rf"\g<1>0. deg",
-        content,
-    )
+    content = _set_or_add_line(content, f"/gate/source/{source_name}/gps/ang/mintheta", "0. deg")
+    content = _set_or_add_line(content, f"/gate/source/{source_name}/gps/ang/maxtheta", "0. deg")
 
     temp_macro_path.write_text(content)
 
