@@ -31,9 +31,21 @@ def _re_sub_or_append(pattern: str, replacement: str, content: str) -> str:
 
 
 def _set_or_add_line(content: str, key: str, value: str) -> str:
-    """Set a 'key = value' line (anchored), or append it if not found."""
-    line = f"{key} = {value}"
-    pattern = rf"^{re.escape(key)}\s*=.*$"
+    """
+    Set a line by key to a given value.
+    - For TOPAS-style keys (not starting with '/'), use 'key = value'.
+    - For GATE-style commands (keys starting with '/'), use 'key value'.
+    """
+    if key.startswith('/'):
+        # GATE syntax: "/path/to/cmd value"
+        line = f"{key} {value}"
+        # Match any existing line that starts with this command
+        pattern = rf"^{re.escape(key)}\b.*$"
+    else:
+        # TOPAS syntax: "key = value"
+        line = f"{key} = {value}"
+        pattern = rf"^{re.escape(key)}\s*=.*$"
+
     if re.search(pattern, content, flags=re.MULTILINE):
         return re.sub(pattern, line, content, flags=re.MULTILINE)
     # Append safely
@@ -146,6 +158,13 @@ def run_gate_simulation_vacuum(
 
     content = base_macro_path.read_text()
 
+    # Ensure both possible output locations exist to avoid ROOT open errors
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        Path("./output").mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+
     # Phantom thickness
     content = _set_or_add_line(content, "/gate/phantom/geometry/setZLength", f"{thickness_cm} cm")
 
@@ -182,9 +201,32 @@ def run_gate_simulation_vacuum(
         if cp.stdout:
             print(cp.stdout[:5000])
         print("GATE simulation with vacuum completed successfully.")
+        print(f"GATE macro used: {temp_macro_path}")
+
+        # If GATE still wrote into ./output, copy expected files back to output_dir
+        legacy = Path("./output")
+        for fname in [
+            "source_check.root",
+            "phantom_transmission_TEMPLATE.root",
+            "energy_deposition.mhd",
+        ]:
+            src = legacy / fname
+            dst = output_dir / fname
+            try:
+                if src.exists() and not dst.exists():
+                    shutil.copy2(src, dst)
+            except Exception:
+                pass
         return True
     except subprocess.CalledProcessError as e:
-        print(f"GATE simulation failed. Error:\n{e.stderr}")
+        stdout = e.stdout or ""
+        stderr = e.stderr or ""
+        print("GATE simulation failed. See outputs below.")
+        print(f"GATE macro used: {temp_macro_path}")
+        if stdout:
+            print("--- STDOUT (first 5000 chars) ---\n" + stdout[:5000])
+        if stderr:
+            print("--- STDERR (first 5000 chars) ---\n" + stderr[:5000])
     except FileNotFoundError:
         print(f"Error: GATE executable not found at '{GATE_EXECUTABLE_PATH}'")
     return False
