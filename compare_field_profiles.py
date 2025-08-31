@@ -89,7 +89,8 @@ def run_topas_simulation_vacuum(
         content,
     )
 
-    # Force pencil beam (no divergence)
+    # Force pencil beam (no divergence). Use a tiny non-zero cutoff to avoid TOPAS errors with 0.
+    tiny_ang_rad = 1.0e-6
     content = _re_sub_or_append(
         r"(s:So/XRaySource/BeamAngularDistribution\s*=\s*).*",
         r'\g<1>"Flat"',
@@ -97,12 +98,12 @@ def run_topas_simulation_vacuum(
     )
     content = _re_sub_or_append(
         r"(d:So/XRaySource/BeamAngularCutoffX\s*=\s*)[\d.eE+\-]+\s*rad",
-        r"\g<1>0.0 rad",
+        f"\\g<1>{tiny_ang_rad} rad",
         content,
     )
     content = _re_sub_or_append(
         r"(d:So/XRaySource/BeamAngularCutoffY\s*=\s*)[\d.eE+\-]+\s*rad",
-        r"\g<1>0.0 rad",
+        f"\\g<1>{tiny_ang_rad} rad",
         content,
     )
 
@@ -131,9 +132,17 @@ def run_topas_simulation_vacuum(
         if cp.stdout:
             print(cp.stdout[:5000])
         print("TOPAS simulation with vacuum completed successfully.")
+        print(f"TOPAS macro used: {temp_macro_path}")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"TOPAS simulation failed. Error:\n{e.stderr}")
+        stdout = e.stdout or ""
+        stderr = e.stderr or ""
+        print("TOPAS simulation failed. See outputs below.")
+        print(f"TOPAS macro used: {temp_macro_path}")
+        if stdout:
+            print("--- STDOUT (first 5000 chars) ---\n" + stdout[:5000])
+        if stderr:
+            print("--- STDERR (first 5000 chars) ---\n" + stderr[:5000])
     except FileNotFoundError:
         print(f"Error: TOPAS executable not found at '{TOPAS_EXECUTABLE_PATH}'")
     return False
@@ -220,6 +229,17 @@ def run_gate_simulation_vacuum(
     content = _re_sub_or_append(
         rf"(/gate/source/{source_name}/gps/maxtheta\s+)[\d.eE+\-]+\s*\.\s*deg|(/gate/source/{source_name}/gps/maxtheta\s+)[\d.eE+\-]+\s*deg",
         rf"/gate/source/{source_name}/gps/maxtheta 0. deg",
+        content,
+    )
+    # Also set the newer 'ang/mintheta' and 'ang/maxtheta' to avoid deprecation warnings
+    content = _re_sub_or_append(
+        rf"(/gate/source/{source_name}/gps/ang/mintheta\s+)[\d.eE+\-]+\s*deg",
+        rf"\g<1>0. deg",
+        content,
+    )
+    content = _re_sub_or_append(
+        rf"(/gate/source/{source_name}/gps/ang/maxtheta\s+)[\d.eE+\-]+\s*deg",
+        rf"\g<1>0. deg",
         content,
     )
 
