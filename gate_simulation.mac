@@ -1,0 +1,17 @@
+# --- CORRECTED Source Definition ---
+/gate/source/addSource xray_source gps
+/gate/source/xray_source/gps/particle gamma
+/gate/source/xray_source/gps/ene/type User
+/gate/source/xray_source/gps/ene/setSpectrumFile ./spectrum.txt
+
+# --- KEY CHANGE: Use 'Plane' type for a 'Square' shape ---
+/gate/source/xray_source/gps/pos/type Plane
+/gate/source/xray_source/gps/pos/shape Square
+/gate/source/xray_source/gps/pos/halfx 0.0003 mm  # 1 micrometer width
+/gate/source/xray_source/gps/pos/halfy 0.0003 mm  # 1 micrometer width
+/gate/source/xray_source/gps/pos/centre 0 0 -2 cm
+
+# Define the beam direction (pencil beam along +Z)
+/gate/source/xray_source/gps/ang/type iso
+/gate/source/xray_source/gps/mintheta 0. deg
+/gate/source/xray_source/gps/maxtheta 0. deg
