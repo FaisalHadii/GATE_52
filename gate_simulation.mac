@@ -1,3 +1,99 @@
+#-----------------------------------------------------
+# Gate mac file - Combined Simulation
+# v9.4 - Corrected Source Definition
+#-----------------------------------------------------
+
+# --- Output Path Alias ---
+/control/alias GateOutputPath ./output/
+
+# --- Visualization (Disabled) ---
+#/vis/open OGLSQt
+
+# --- Materials ---
+/gate/geometry/setMaterialDatabase ./GateMaterials.db
+
+#-----------------------------------------------------
+# GEOMETRY
+#-----------------------------------------------------
+
+# --- World Definition ---
+/gate/world/geometry/setXLength 400. cm
+/gate/world/geometry/setYLength 400. cm
+/gate/world/geometry/setZLength 400. cm
+/gate/world/setMaterial Vacuum
+
+# --- Scanner Volume (Parent Container) ---
+/gate/world/daughters/name           scanner
+/gate/world/daughters/insert         box
+/gate/scanner/geometry/setXLength    200. cm
+/gate/scanner/geometry/setYLength    200. cm
+/gate/scanner/geometry/setZLength    200. cm
+/gate/scanner/setMaterial            Vacuum
+/gate/scanner/placement/setTranslation 0 0 0 cm
+
+# --- Phase Space Volume to Check Source ---
+/gate/scanner/daughters/name           phsp_source_check
+/gate/scanner/daughters/insert         box
+/gate/phsp_source_check/geometry/setXLength  50 cm
+/gate/phsp_source_check/geometry/setYLength  50 cm
+/gate/phsp_source_check/geometry/setZLength  0.125 cm
+/gate/phsp_source_check/setMaterial          Vacuum
+/gate/phsp_source_check/placement/setTranslation 0 0 -1 cm
+
+# --- Phantom Definition ---
+/gate/scanner/daughters/name           phantom
+/gate/scanner/daughters/insert         box
+/gate/phantom/geometry/setXLength    100. cm
+/gate/phantom/geometry/setYLength    100. cm
+/gate/phantom/geometry/setZLength    0.1    cm
+/gate/phantom/setMaterial            G4_Al
+/gate/phantom/placement/setTranslation 0 0 60 cm
+
+# --- Final Phase Space Detector Volume (after phantom) ---
+/gate/scanner/daughters/name           phsp_volume
+/gate/scanner/daughters/insert         box
+/gate/phsp_volume/geometry/setXLength  50 cm
+/gate/phsp_volume/geometry/setYLength  50 cm
+/gate/phsp_volume/geometry/setZLength  0.125 cm
+/gate/phsp_volume/setMaterial          G4_AIR
+/gate/phsp_volume/placement/setTranslation 0 0 75 cm
+
+#-----------------------------------------------------
+# PHYSICS LIST
+#-----------------------------------------------------
+/gate/physics/addPhysicsList emstandard_opt4
+
+#-----------------------------------------------------
+# ACTORS
+#-----------------------------------------------------
+
+# --- Actor 1: Source Check Phase Space ---
+/gate/actor/addActor PhaseSpaceActor phsp_actor_source_check
+/gate/actor/phsp_actor_source_check/save {GateOutputPath}source_check.root
+/gate/actor/phsp_actor_source_check/attachTo phsp_source_check
+
+# --- Actor 2: Transmission Phase Space ---
+/gate/actor/addActor PhaseSpaceActor phsp_actor_transmission
+/gate/actor/phsp_actor_transmission/save {GateOutputPath}phantom_transmission_TEMPLATE.root
+/gate/actor/phsp_actor_transmission/attachTo phsp_volume
+/gate/actor/phsp_actor_transmission/enablePDGCode true
+
+# --- Actor 3: Energy Deposition Map ---
+/gate/actor/addActor DoseActor energyDepositionMap
+/gate/actor/energyDepositionMap/save           {GateOutputPath}energy_deposition.mhd
+/gate/actor/energyDepositionMap/attachTo       phantom
+/gate/actor/energyDepositionMap/setSize        100 100 4 cm
+/gate/actor/energyDepositionMap/setVoxelSize   1 1 4 mm
+/gate/actor/energyDepositionMap/enableEdep     true
+
+# --- Actor 4: Statistics ---
+/gate/actor/addActor SimulationStatisticActor stat
+/gate/actor/stat/save {GateOutputPath}stats_TEMPLATE.txt
+
+#-----------------------------------------------------
+# SOURCE DEFINITION
+#-----------------------------------------------------
+
 # --- CORRECTED Source Definition ---
 /gate/source/addSource xray_source gps
 /gate/source/xray_source/gps/particle gamma
@@ -16,3 +112,16 @@
 /gate/source/xray_source/gps/ang/type iso
 /gate/source/xray_source/gps/mintheta 0. deg
 /gate/source/xray_source/gps/maxtheta 0. deg
+
+#-----------------------------------------------------
+# INITIALIZATION
+#-----------------------------------------------------
+/gate/run/initialize
+
+#-----------------------------------------------------
+# RANDOM ENGINE & START
+#-----------------------------------------------------
+/gate/random/setEngineName MersenneTwister
+/gate/random/setEngineSeed auto
+/gate/application/setTotalNumberOfPrimaries 100000
+/gate/application/start
