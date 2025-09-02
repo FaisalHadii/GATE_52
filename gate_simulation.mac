@@ -2,7 +2,8 @@
 /gate/source/addSource xray_source gps
 /gate/source/xray_source/gps/particle gamma
 /gate/source/xray_source/gps/ene/type User
-/gate/source/xray_source/gps/ene/setSpectrumFile ./spectrum.txt
+/gate/source/xray_source/gps/ene/setEnergy 0.015 0.025 0.035 0.045 0.055 0.065 0.075 0.085 0.095 0.105 0.115 0.125 0.135 0.145 MeV
+/gate/source/xray_source/gps/ene/setWeight 0.09582 0.14452 0.15732 0.13422 0.17504 0.10122 0.05342 0.04372 0.03492 0.02152 0.02012 0.01300 0.00260 0.00260
 
 # --- KEY CHANGE: Use 'Plane' type for a 'Square' shape ---
 /gate/source/xray_source/gps/pos/type Plane
