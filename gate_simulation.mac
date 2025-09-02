@@ -5,6 +5,7 @@
 
 # --- Output Path Alias ---
 /control/alias GateOutputPath ./output/
+/control/alias PhantomThickness 0.1 cm
 
 # --- Visualization (Disabled) ---
 #/vis/open OGLSQt
@@ -45,7 +46,7 @@
 /gate/scanner/daughters/insert         box
 /gate/phantom/geometry/setXLength    100. cm
 /gate/phantom/geometry/setYLength    100. cm
-/gate/phantom/geometry/setZLength    0.1    cm
+/gate/phantom/geometry/setZLength    {PhantomThickness}
 /gate/phantom/setMaterial            G4_Al
 /gate/phantom/placement/setTranslation 0 0 60 cm
 
@@ -102,20 +103,13 @@
 #-----------------------------------------------------
 
 # --- CORRECTED Source Definition ---
-/gate/source/addSource xray_source gps
+/gate/source/addSource xray_source Volume
+/gate/source/xray_source/setVolume phsp_source_check
 /gate/source/xray_source/gps/particle gamma
-/gate/source/xray_source/gps/ene/type Histogram
-/gate/source/xray_source/gps/ene/setEnergy 0.015 0.025 0.035 0.045 0.055 0.065 0.075 0.085 0.095 0.105 0.115 0.125 0.135 0.145 MeV
-/gate/source/xray_source/gps/ene/setWeight 0.09582 0.14452 0.15732 0.13422 0.17504 0.10122 0.05342 0.04372 0.03492 0.02152 0.02012 0.01300 0.00260 0.00260
-
-# --- KEY CHANGE: Use 'Plane' type for a 'Square' shape ---
-/gate/source/xray_source/gps/pos/type Plane
-/gate/source/xray_source/gps/pos/shape Square
-/gate/source/xray_source/gps/pos/halfx 0.0003 mm  # 1 micrometer width
-/gate/source/xray_source/gps/pos/halfy 0.0003 mm  # 1 micrometer width
-/gate/source/xray_source/gps/pos/centre 0 0 -2 cm
-
-# Define the beam direction (pencil beam along +Z)
+/gate/source/xray_source/gps/ene/type Lin
+/gate/source/xray_source/gps/ene/min 0.015 MeV
+/gate/source/xray_source/gps/ene/max 0.145 MeV
+/gate/source/xray_source/gps/ene/sigma 0.02 MeV
 /gate/source/xray_source/gps/ang/type iso
 /gate/source/xray_source/gps/mintheta 0. deg
 /gate/source/xray_source/gps/maxtheta 0. deg
